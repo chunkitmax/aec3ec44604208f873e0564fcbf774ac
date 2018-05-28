@@ -109,3 +109,4 @@ data
 test*
 log*
 best_*
+*_log*

@@ -120,6 +120,7 @@ class Trainer:
           self.writer.add_scalar('train_acc', acc / counter, epoch_index)
           self.writer.add_scalar('val_loss', mean_val_loss, epoch_index)
           self.writer.add_scalar('val_fscr', mean_fscore, epoch_index)
+          self.writer.add_scalar('val_corrcoef', corrcoef, epoch_index)
         loss_history.append(mean_val_loss)
         # # Early stopping
         # if mean_val_loss > np.mean(loss_history):
@@ -175,4 +176,3 @@ class Trainer:
 if __name__ == '__main__':
   trainer = Trainer(use_cuda=True, use_tensorboard=True)
   trainer.train()
-\
