@@ -22,14 +22,14 @@ def tokenize(s):
             for token in tokens]
   return tokens
 
-def load_data(file_name, max_no_lines=None):
+def load_data(file_name, max_num_lines=None):
   tweet = []
   affect = []
   intensity = []
   intensity_getter = re.compile(r'^[0-9\.\-]+')
 
-  if max_no_lines is not None:
-    max_no_lines += 1
+  if max_num_lines is not None:
+    max_num_lines += 1
 
   with ZipFile(file_name, 'r') as zf:
     file_list = zf.namelist()
@@ -37,7 +37,7 @@ def load_data(file_name, max_no_lines=None):
     for index, file_name in enumerate(file_list):
       print('  file: %d / %d'%(index+1, total_file_count))
       with zf.open(file_name, 'r') as f:
-        lines = f.read().decode('utf8').strip().split('\n')[1:max_no_lines]
+        lines = f.read().decode('utf8').strip().split('\n')[1:max_num_lines]
         total_line_count = len(lines)
         for line_no, line in enumerate(lines):
           _, _tweet, _affect, _intensity = line.strip().split('\t')
