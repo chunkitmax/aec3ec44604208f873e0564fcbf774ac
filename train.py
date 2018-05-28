@@ -41,8 +41,6 @@ class Trainer:
     if self.use_tensorboard:
       from tensorboardX import SummaryWriter
       self.writer = SummaryWriter(identity+'_logs')
-    optimizer = self.model.optimizer
-    loss_fn = self.model.loss_fn
     self.logger.i('Start training %s...'%(identity), True)
     try:
       total_batch_per_epoch = len(self.train_loader)
@@ -69,12 +67,12 @@ class Trainer:
           if self.use_cuda:
             data = data.cuda()
             label = label.cuda()
+          self.model.optimizer.zero_grad()
           output, predicted = self.model(data)
           acc += (label.squeeze() == predicted).float().mean().data
-          loss = loss_fn(output, label.view(-1))
-          optimizer.zero_grad()
+          loss = self.model.loss_fn(output, label.view(-1))
           loss.backward()
-          optimizer.step()
+          self.model.optimizer.step()
           losses += loss.data.cpu()[0]
           counter += 1
           progress = min((batch_index + 1) / total_batch_per_epoch * 20., 20.)
@@ -102,12 +100,11 @@ class Trainer:
             label = label.cuda()
           output, predicted = self.model(data)
           valid_data += list(predicted.view(-1).data.tolist())
-          prec, recall, \
-          fscore, _ = precision_recall_fscore_support(label.squeeze().data.tolist(),
-                                                      predicted.data.tolist(),
-                                                      average='weighted')
+          fscore = precision_recall_fscore_support(label.squeeze().data.tolist(),
+                                                   predicted.data.tolist(),
+                                                   average='weighted')[2]
           valid_fscore += fscore
-          valid_losses += loss_fn(output, label.view(-1)).data.cpu()[0]
+          valid_losses += self.model.loss_fn(output, label.view(-1)).data.cpu()[0]
         mean_val_loss = valid_losses/(valid_step+1)
         mean_fscore = valid_fscore/(valid_step+1)
         corrcoef = np.corrcoef(valid_data, valid_labels)[0, 1]

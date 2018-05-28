@@ -37,13 +37,15 @@ if __name__ == '__main__':
       pickle.dump(valid_set, open('data/valid_%s_set'%(Args.task), 'wb+'))
     print('Wordict size: %d'%(len(train_set.wordict)))
 
+    train_set.set_emotion('joy')
+    valid_set.set_emotion('joy')
     if Args.phase == 'train':
       # Training
       train_loader = T.utils.data.DataLoader(train_set, batch_size=Args.batch_size, shuffle=True)
       valid_loader = T.utils.data.DataLoader(valid_set, batch_size=Args.batch_size, shuffle=True)
-      model = CNN_Model(len(train_set.wordict), Args.emb_len, Args.max_len)
+      model = CNN_Model(train_set.wordict_size, Args.emb_len, Args.max_len)
       def collate_fn(entry):
-        return entry[0], entry[1].unsqueeze(1)
+        return entry[0], entry[2].long().unsqueeze(1)
       trainer = Trainer(model, train_loader, valid_loader, use_cuda=True, collate_fn=collate_fn,
                         use_tensorboard=Args.tensorboard, save_best_model=Args.save)
       trainer.train()
