@@ -1,0 +1,7 @@
+__pycache__
+data
+.vscode
+*.zip
+test*
+log*
+best_*
