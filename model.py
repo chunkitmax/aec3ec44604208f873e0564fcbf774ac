@@ -30,29 +30,30 @@ class CNN_Model(T.nn.Module):
     output = self._forward_1(embeddings)
     return output, T.max(output, dim=1)[1]
 
-  def _build_model_1(self):
+  def _build_model_1(self, kernel_size=(3, 4, 5), num_conv=3, num_kernel=200):
     self.embed = T.nn.Embedding(self.wordict_size, self.embedding_len, padding_idx=0,
                                 scale_grad_by_freq=True)
-    self.conv = T.nn.Conv1d(self.embedding_len, 200, 3, padding=2)
-    self.conv_1 = T.nn.Conv1d(200, 200, 3, padding=2)
-    self.conv_2 = T.nn.Conv1d(200, 200, 3, padding=2)
-    self.conv2 = T.nn.Conv1d(self.embedding_len, 200, 4, padding=3)
-    self.conv2_1 = T.nn.Conv1d(200, 200, 4, padding=3)
-    self.conv2_2 = T.nn.Conv1d(200, 200, 4, padding=3)
-    self.conv3 = T.nn.Conv1d(self.embedding_len, 200, 5, padding=4)
-    self.conv3_1 = T.nn.Conv1d(200, 200, 5, padding=4)
-    self.conv3_2 = T.nn.Conv1d(200, 200, 5, padding=4)
-    self.pool = T.nn.MaxPool1d(self.max_doc_len)
-    self.pool2 = T.nn.MaxPool1d(self.max_doc_len)
-    self.pool3 = T.nn.MaxPool1d(self.max_doc_len)
+    self.sequential = T.nn.ModuleList()
+    for n in kernel_size:
+      self.conv = T.nn.ModuleList()
+      self.conv.append(T.nn.Conv1d(self.embedding_len, num_kernel, n, padding=n-1))
+      for _ in range(num_conv-1):
+        self.conv.append(T.nn.Conv1d(num_kernel, num_kernel, n, padding=n-1))
+      self.sequential.append(self.conv)
+    self.sequential.append(T.nn.Linear(len(kernel_size)*num_kernel, 4))
     self.dropout = T.nn.Dropout()
-    self.dense = T.nn.Linear(200*3, 4)
+    self.activation = lambda x: T.nn.functional.leaky_relu(x, 0.1)
+    self.max_pool = lambda x: T.nn.functional.max_pool1d(x, x.shape[2])
   def _forward_1(self, embeddings):
-    conv = self.pool(self.conv_2(self.conv_2(self.conv(embeddings))))
-    conv2 = self.pool2(self.conv2_2(self.conv2_1(self.conv2(embeddings))))
-    conv3 = self.pool3(self.conv3_2(self.conv3_1(self.conv3(embeddings))))
-    concat = T.cat([conv.squeeze(), conv2.squeeze(), conv3.squeeze()], dim=1)
-    return self.dense(concat)
+    output = []
+    for module in self.sequential:
+      if isinstance(module, T.nn.ModuleList):
+        tmp_output = embeddings
+        for layer in module:
+          tmp_output = self.activation(layer(tmp_output))
+        output.append(self.max_pool(tmp_output).squeeze())
+      else:
+        return module(T.cat(output, dim=1))
 
   @property
   def optimizer(self):
