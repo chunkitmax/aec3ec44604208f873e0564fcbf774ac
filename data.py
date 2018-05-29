@@ -29,7 +29,7 @@ class SemEval_DataSet(Dataset):
     total_zipfile_count = len(file_info_list)
     for index, file_info in enumerate(file_info_list):
       print('ZipFile: %d / %d'%(index+1, total_zipfile_count))
-      self.data, _, self.intensity = load_data(file_info[0], max_num_lines=max_num_lines)
+      self.data, self.intensity = load_data(file_info[0], max_num_lines=max_num_lines)
     # get word_dict & label_dict
     if wordict is None:
       self.wordict = build_dict(self.data, 'word_'+set_name, save, save_counter,

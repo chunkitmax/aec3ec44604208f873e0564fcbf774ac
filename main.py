@@ -35,10 +35,16 @@ if __name__ == '__main__':
     else:
       valid_set = SemEval_DataSet('dev', 'oc', wordict=train_set.wordict)
       pickle.dump(valid_set, open('data/valid_%s_set'%(Args.task), 'wb+'))
+    if os.path.exists('data/test_%s_set'%(Args.task)):
+      valid_set = pickle.load(open('data/test_%s_set'%(Args.task), 'rb'))
+    else:
+      valid_set = SemEval_DataSet('test', 'oc', wordict=train_set.wordict)
+      pickle.dump(valid_set, open('data/test_%s_set'%(Args.task), 'wb+'))
     print('Wordict size: %d'%(len(train_set.wordict)))
     if Args.phase == 'train':
       # Training
-      model_generator = lambda wordict_size, weight: CNN_Model(wordict_size, Args.emb_len, Args.max_len, weight)
+      model_generator = lambda wordict_size, weight: \
+                        CNN_Model(wordict_size, Args.emb_len, Args.max_len, weight)
       def collate_fn(entry):
         return entry[0], entry[1].long().unsqueeze(1)
       trainer = Trainer(model_generator, train_set, valid_set, max_epoch=Args.epoch,

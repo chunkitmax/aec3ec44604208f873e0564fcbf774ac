@@ -65,7 +65,7 @@ class Trainer:
       epoch_index = 0
       for epoch_index in range(self.max_epoch):
         losses = 0.
-        acc = 0.
+        # acc = 0.
         counter = 0
         self.logger.i('[ %d / %d ] epoch:'%(epoch_index + 1, self.max_epoch), True)
         # Training
@@ -81,7 +81,7 @@ class Trainer:
             data = data.cuda()
             label = label.cuda()
           output, predicted = model(data)
-          acc += (label.squeeze() == predicted).float().mean().data * data.size(0)
+          # acc += (label.squeeze() == predicted).float().mean().data * data.size(0)
           loss = model.loss_fn(output, label.view(-1))
           model.optimizer.zero_grad()
           loss.backward()
@@ -90,9 +90,9 @@ class Trainer:
           losses += loss.data.cpu()[0] * data.size(0)
           counter += data.size(0)
           progress = min((batch_index + 1) / total_batch_per_epoch * 20., 20.)
-          self.logger.d('[%s] (%3.f%%) loss: %.4f, acc: %.4f'%
+          self.logger.d('[%s] (%3.f%%) loss: %.4f, '%
                         ('>'*int(progress)+'-'*(20-int(progress)), progress * 5.,
-                         losses / counter, acc / counter))
+                         losses / counter))
         mean_loss = losses / counter
         valid_losses = 0.
         valid_counter = 0
@@ -107,28 +107,28 @@ class Trainer:
           else:
             data, label = entry
           valid_labels += list(label.view(-1))
-          data = T.autograd.Variable(T.LongTensor(data))
-          label = T.autograd.Variable(T.LongTensor(label))
+          data = T.autograd.Variable(data)
+          label = T.autograd.Variable(label)
           if self.use_cuda:
             data = data.cuda()
             label = label.cuda()
           output, predicted = model(data)
           valid_losses += model.loss_fn(output, label.view(-1)).data.cpu()[0] * data.size(0)
           valid_prediction += list(predicted.view(-1).data.tolist())
-          valid_acc += (label.squeeze() == predicted).float().mean().data * data.size(0)
+          # valid_acc += (label.squeeze() == predicted).float().mean().data * data.size(0)
           valid_counter += data.size(0)
         mean_val_loss = valid_losses/valid_counter
-        mean_val_acc = valid_acc/valid_counter
+        # mean_val_acc = valid_acc/valid_counter
         corrcoef = np.corrcoef(valid_prediction, valid_labels)[0, 1]
-        self.logger.d(' -- val_loss: %.4f, val_acc: %.4f, corrcoef: %.4f'%
-                      (mean_val_loss, mean_val_acc, corrcoef),
+        self.logger.d(' -- val_loss: %.4f, corrcoef: %.4f'%
+                      (mean_val_loss, corrcoef),
                       reset_cursor=False)
         # Log with tensorboard
         if self.use_tensorboard:
           self.writer.add_scalar('train_loss', mean_loss, epoch_index)
-          self.writer.add_scalar('train_acc', acc / counter, epoch_index)
+          # self.writer.add_scalar('train_acc', acc / counter, epoch_index)
           self.writer.add_scalar('val_loss', mean_val_loss, epoch_index)
-          self.writer.add_scalar('val_acc', mean_val_acc, epoch_index)
+          # self.writer.add_scalar('val_acc', mean_val_acc, epoch_index)
           self.writer.add_scalar('val_corrcoef', corrcoef, epoch_index)
         loss_history.append(mean_val_loss)
         # # Early stopping
