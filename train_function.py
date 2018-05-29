@@ -10,12 +10,12 @@ def get_dataset(task):
   if os.path.exists('data/train_%s_set'%(task)):
     train_set = pickle.load(open('data/train_%s_set'%(task), 'rb'))
   else:
-    train_set = SemEval_DataSet('train', task, save=True, max_num_lines=1)
+    train_set = SemEval_DataSet('train', task, save=True)
     pickle.dump(train_set, open('data/train_%s_set'%(task), 'wb+'))
   if os.path.exists('data/valid_%s_set'%(task)):
     valid_set = pickle.load(open('data/valid_%s_set'%(task), 'rb'))
   else:
-    valid_set = SemEval_DataSet('dev', task, wordict=train_set.wordict, max_num_lines=1)
+    valid_set = SemEval_DataSet('dev', task, wordict=train_set.wordict)
     pickle.dump(valid_set, open('data/valid_%s_set'%(task), 'wb+'))
   print('Wordict size: %s'%([len(train_set.wordict[emotion])
                              for emotion in train_set.wordict]))
