@@ -99,7 +99,7 @@ class Trainer:
         valid_acc = 0.
         # Validtion
         model.eval()
-        valid_data = []
+        valid_prediction = []
         valid_labels = []
         for entry in valid_loader:
           if self.collate_fn is not None:
@@ -114,12 +114,12 @@ class Trainer:
             label = label.cuda()
           output, predicted = model(data)
           valid_losses += model.loss_fn(output, label.view(-1)).data.cpu()[0] * data.size(0)
-          valid_data += list(predicted.view(-1).data.tolist())
+          valid_prediction += list(predicted.view(-1).data.tolist())
           valid_acc += (label.squeeze() == predicted).float().mean().data * data.size(0)
           valid_counter += data.size(0)
         mean_val_loss = valid_losses/valid_counter
         mean_val_acc = valid_acc/valid_counter
-        corrcoef = np.corrcoef(valid_data, valid_labels)[0, 1]
+        corrcoef = np.corrcoef(valid_prediction, valid_labels)[0, 1]
         self.logger.d(' -- val_loss: %.4f, val_acc: %.4f, corrcoef: %.4f'%
                       (mean_val_loss, mean_val_acc, corrcoef),
                       reset_cursor=False)
@@ -151,26 +151,15 @@ class Trainer:
       self.writer.close()
     self.logger.i('Finish', True)
     return best_corrcoef
-  # def _test(self, test_file='test_for_you_guys.csv'):
-  #   zf = ZipFile(self.target_file, 'r')
-  #   raw_data = zf.read(test_file).decode("ISO-8859-1").strip().split('\n')
-  #   whole_dataset = Dataset(raw_data[1:], 1.0, is_test_set=True, max_len=max_len)
-  #   test_data_loader = DataLoader(whole_dataset, batch_size=self.batch_size, shuffle=False)
-  #   with open('submission.csv', 'w+') as sf:
-  #     sf.write('%s,sentiment\n'%(raw_data[0][:-1]))
-  #     counter = 1
-  #     model.eval()
-  #     for data, _ in test_data_loader:
-  #       data = T.autograd.Variable(data)
-  #       if self.use_cuda:
-  #         data = data.cuda()
-  #       _, predicted = model(data)
-  #       for prediction in predicted.cpu().data.tolist():
-  #         sf.write('%s,%s\n'%(raw_data[counter][:-1],
-  #                             [key for key, value in whole_dataset.sentiments.items()
-  #                              if value == prediction][0]))
-  #         counter += 1
-  #   print('Finished')
+  # def _test(self, model, test_loader):
+  #   model.eval()
+  #   for entry in test_loader:
+  #     data = entry[0]
+  #     data = T.autograd.Variable(data)
+  #     if self.use_cuda:
+  #       data = data.cuda()
+  #     _, predicted = model(data)
+  #     counter += 1
   def _save(self, model, global_step, loss_history, best_corrcoef, identity):
     T.save({
         'epoch': global_step+1,
