@@ -22,7 +22,7 @@ class CNN_Model(T.nn.Module):
     self._loss_fn = T.nn.CrossEntropyLoss()
     if self.use_cuda:
       self.cuda()
-    self._optimizer = T.optim.Adam(self.parameters(), 5e-4)
+    self._optimizer = T.optim.Adam(self.parameters(), 1e-3)
 
   def forward(self, inputs):
     embeddings = self.embed(inputs)
@@ -30,7 +30,7 @@ class CNN_Model(T.nn.Module):
     output = self._forward_1(embeddings)
     return output, T.max(output, dim=1)[1]
 
-  def _build_model_1(self, kernel_size=(3, 4, 5), num_conv=3, num_kernel=100):
+  def _build_model_1(self, kernel_size=(2, 3, 4), num_conv=2, num_kernel=100):
     self.embed = T.nn.Embedding(self.wordict_size, self.embedding_len, padding_idx=0,
                                 scale_grad_by_freq=True)
     self.sequential = T.nn.ModuleList()
@@ -53,7 +53,7 @@ class CNN_Model(T.nn.Module):
           tmp_output = self.activation(layer(tmp_output))
         output.append(self.max_pool(tmp_output).squeeze())
       else:
-        return module(T.nn.functional.dropout(T.cat(output, dim=1)))
+        return module(self.dropout(T.cat(output, dim=1)))
 
   @property
   def optimizer(self):
