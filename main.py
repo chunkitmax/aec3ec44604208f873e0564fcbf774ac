@@ -13,6 +13,7 @@ parser.add_argument('phase', type=str, help='Phase [train/test]')
 parser.add_argument('-b', '--batch_size', default=10, type=int, help='Batch size')
 parser.add_argument('-emb', '--emb_len', default=50, type=int, help='Embedding length')
 parser.add_argument('-ml', '--max_len', default=100, type=int, help='Max document length')
+parser.add_argument('-e', '--epoch', default=1000, type=int, help='Epoch to train')
 
 parser.add_argument('-tb', '--tensorboard', action='store_true',
                     help='Gen log files for Tensorboard')
@@ -32,16 +33,16 @@ if __name__ == '__main__':
     if os.path.exists('data/valid_%s_set'%(Args.task)):
       valid_set = pickle.load(open('data/valid_%s_set'%(Args.task), 'rb'))
     else:
-      valid_set = SemEval_DataSet('dev', 'oc', wordict=train_set.wordict,
-                                  affectdict=train_set.affectdict)
+      valid_set = SemEval_DataSet('dev', 'oc', wordict=train_set.wordict)
       pickle.dump(valid_set, open('data/valid_%s_set'%(Args.task), 'wb+'))
     print('Wordict size: %d'%(len(train_set.wordict)))
     if Args.phase == 'train':
       # Training
-      model = CNN_Model(Args.emb_len, Args.max_len)
+      model_generator = lambda wordict_size: CNN_Model(wordict_size, Args.emb_len, Args.max_len)
       def collate_fn(entry):
         return entry[0], entry[1].long().unsqueeze(1)
-      trainer = Trainer(model, train_set, valid_set, use_cuda=True, collate_fn=collate_fn,
+      trainer = Trainer(model_generator, train_set, valid_set, max_epoch=Args.epoch,
+                        use_cuda=True, collate_fn=collate_fn,
                         use_tensorboard=Args.tensorboard, save_best_model=Args.save)
       trainer.train()
     else:
