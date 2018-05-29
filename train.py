@@ -36,8 +36,7 @@ class Trainer:
     self.save_best_model = save_best_model
     self.counter = 0
   def train(self):
-    # emotions = self.train_dataset.EMOTIONS
-    emotions = ['anger']
+    emotions = self.train_dataset.EMOTIONS
     best_corrcoef = {}
     for emotion in emotions:
       self.train_dataset.set_emotion(emotion)
