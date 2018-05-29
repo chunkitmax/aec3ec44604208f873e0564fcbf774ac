@@ -7,9 +7,10 @@ from torch.utils.data import Dataset
 
 from preprocess import build_dict, load_data
 
-EMOTION = ['joy', 'sadness', 'fear', 'anger']
 
 class SemEval_DataSet(Dataset):
+  EMOTIONS = ['joy', 'sadness', 'fear', 'anger']
+
   def __init__(self, phase, set_name, save_counter=False,
                max_doc_len=100, max_num_lines=None, save=False,
                wordict=None, affectdict=None):
@@ -54,7 +55,7 @@ class SemEval_DataSet(Dataset):
     self.affect = tmp_affect
     self.emotion = None
   def set_emotion(self, emotion):
-    assert emotion in EMOTION
+    assert emotion in self.EMOTIONS
     self.emotion = emotion
   def __getitem__(self, index):
     return T.LongTensor(self.data[self.emotion][index]), \

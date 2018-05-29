@@ -11,7 +11,7 @@ parser.add_argument('task', type=str, help='Task [oc/reg]')
 parser.add_argument('phase', type=str, help='Phase [train/test]')
 
 parser.add_argument('-b', '--batch_size', default=10, type=int, help='Batch size')
-parser.add_argument('-emb', '--emb_len', default=100, type=int, help='Embedding length')
+parser.add_argument('-emb', '--emb_len', default=50, type=int, help='Embedding length')
 parser.add_argument('-ml', '--max_len', default=100, type=int, help='Max document length')
 
 parser.add_argument('-tb', '--tensorboard', action='store_true',
@@ -36,17 +36,12 @@ if __name__ == '__main__':
                                   affectdict=train_set.affectdict)
       pickle.dump(valid_set, open('data/valid_%s_set'%(Args.task), 'wb+'))
     print('Wordict size: %d'%(len(train_set.wordict)))
-
-    train_set.set_emotion('joy')
-    valid_set.set_emotion('joy')
     if Args.phase == 'train':
       # Training
-      train_loader = T.utils.data.DataLoader(train_set, batch_size=Args.batch_size, shuffle=True)
-      valid_loader = T.utils.data.DataLoader(valid_set, batch_size=Args.batch_size, shuffle=True)
-      model = CNN_Model(train_set.wordict_size, Args.emb_len, Args.max_len)
+      model = CNN_Model(Args.emb_len, Args.max_len)
       def collate_fn(entry):
-        return entry[0], entry[2].long().unsqueeze(1)
-      trainer = Trainer(model, train_loader, valid_loader, use_cuda=True, collate_fn=collate_fn,
+        return entry[0], entry[1].long().unsqueeze(1)
+      trainer = Trainer(model, train_set, valid_set, use_cuda=True, collate_fn=collate_fn,
                         use_tensorboard=Args.tensorboard, save_best_model=Args.save)
       trainer.train()
     else:
