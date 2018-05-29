@@ -29,7 +29,6 @@ def tokenize(s):
 
 def load_data(file_name, max_num_lines=None):
   tweet = {}
-  affect = {}
   intensity = {}
   intensity_getter = re.compile(r'^[0-9\.\-]+')
 
@@ -43,20 +42,18 @@ def load_data(file_name, max_num_lines=None):
       print('  file: %d / %d'%(index+1, total_file_count))
       emotion = file_name.split('-')[-2]
       tweet[emotion] = []
-      affect[emotion] = []
       intensity[emotion] = []
       with zf.open(file_name, 'r') as f:
         lines = f.read().decode('utf8').strip().split('\n')[1:max_num_lines]
         total_line_count = len(lines)
         for line_no, line in enumerate(lines):
-          _, _tweet, _affect, _intensity = line.strip().split('\t')
+          _, _tweet, _, _intensity = line.strip().split('\t')
           tweet[emotion].append(tokenize(_tweet))
-          affect[emotion].append(_affect)
           _intensity = float(intensity_getter.search(_intensity)[0])
           intensity[emotion].append(_intensity)
           print('\r    line: %d / %d'%(line_no+1, total_line_count), end='\033[K')
         print()
-  return tweet, affect, intensity
+  return tweet, intensity
 
 def build_dict(data_dict, name, save=False, save_counter=False, preserved_words=()):
   if not os.path.exists('data'):

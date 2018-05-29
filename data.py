@@ -13,7 +13,7 @@ class SemEval_DataSet(Dataset):
 
   def __init__(self, phase, set_name, save_counter=False,
                max_doc_len=100, max_num_lines=None, save=False,
-               wordict=None, affectdict=None):
+               wordict=None):
     preserved_words = ("<pad>", "<unk>")
 
     if phase not in ['train', 'dev', 'test']:
@@ -28,17 +28,13 @@ class SemEval_DataSet(Dataset):
     total_zipfile_count = len(file_info_list)
     for index, file_info in enumerate(file_info_list):
       print('ZipFile: %d / %d'%(index+1, total_zipfile_count))
-      self.data, self.affect, self.intensity = load_data(file_info[0], max_num_lines=max_num_lines)
+      self.data, _, self.intensity = load_data(file_info[0], max_num_lines=max_num_lines)
     # get word_dict & label_dict
     if wordict is None:
       self.wordict = build_dict(self.data, 'word_'+set_name, save, save_counter,
                                 preserved_words=preserved_words)
     else:
       self.wordict = wordict
-    if affectdict is None:
-      self.affectdict = build_dict(self.affect, 'affect'+set_name, save, save_counter)
-    else:
-      self.affectdict = affectdict
     # word2idx
     tmp_data = {}
     for emotion, data in self.data.items():
@@ -48,18 +44,12 @@ class SemEval_DataSet(Dataset):
                                      for word in entry][:max_doc_len]+[0]*(max_doc_len-len(entry))
                                     for entry in data], np.int32)
     self.data = tmp_data
-    # label2idx
-    tmp_affect = {}
-    for emotion, affect_list in self.affect.items():
-      tmp_affect[emotion] = [self.affectdict[emotion][affect] for affect in affect_list]
-    self.affect = tmp_affect
     self.emotion = None
   def set_emotion(self, emotion):
     assert emotion in self.EMOTIONS
     self.emotion = emotion
   def __getitem__(self, index):
     return T.LongTensor(self.data[self.emotion][index]), \
-           T.LongTensor([self.affect[self.emotion][index]]), \
            self.intensity[self.emotion][index]
   @property
   def wordict_size(self):
@@ -68,8 +58,7 @@ class SemEval_DataSet(Dataset):
     return self.data[self.emotion].shape[0]
 
 if __name__ == '__main__':
-  dataset = SemEval_DataSet('train', 'emotion', 'reg', max_num_lines=1)
+  dataset = SemEval_DataSet('train', 'reg', max_num_lines=1)
   print(dataset)
   print(dataset.data)
-  print(dataset.affect)
   print(dataset.intensity)
