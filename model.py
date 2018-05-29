@@ -22,12 +22,14 @@ class LSTM_Model(T.nn.Module):
     self._optimizer = T.optim.Adam(self.parameters(), 1e-3)
 
 class CNN_Model(T.nn.Module):
-  def __init__(self, wordict_size, embedding_len, max_doc_len, task, weight=None, use_cuda=True):
+  def __init__(self, wordict_size, embedding_len, max_doc_len, task,
+               lr=1e-3, weight=None, use_cuda=True):
     super(CNN_Model, self).__init__()
     self.wordict_size = wordict_size
     self.embedding_len = embedding_len
     self.max_doc_len = max_doc_len
     self.task = task
+    self.lr = lr
     self.weight = weight
     self.use_cuda = use_cuda
     self._build_model()
@@ -38,13 +40,16 @@ class CNN_Model(T.nn.Module):
                     else T.nn.MSELoss()
     if self.use_cuda:
       self.cuda()
-    self._optimizer = T.optim.Adam(self.parameters(), 1e-3)
+    self._optimizer = T.optim.Adam(self.parameters(), self.lr)
 
   def forward(self, inputs):
     embeddings = self.embed(inputs)
     embeddings = T.transpose(embeddings, 1, 2)
     output = self._forward_1(embeddings)
-    return output, T.max(output, dim=1)[1]
+    if self.task == 'oc':
+      return output, T.max(output, dim=1)[1]
+    else:
+      return output, output
 
   def _build_model_1(self, kernel_size=(2, 3, 4), num_conv=2, num_kernel=100):
     self.embed = T.nn.Embedding(self.wordict_size, self.embedding_len, padding_idx=0,

@@ -34,7 +34,7 @@ def CNN_OC():
 def CNN_REG():
   train_set, valid_set = get_dataset('reg')
   model_generator = lambda wordict_size, weight: \
-                    CNN_Model(wordict_size, 100, 100, 'reg', weight)
+                    CNN_Model(wordict_size, 100, 100, 'reg', 5e-5, weight)
   def collate_fn(entry):
     return entry[0], entry[1].float().unsqueeze(1)
   trainer = Trainer(model_generator, train_set, valid_set, max_epoch=750,
