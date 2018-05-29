@@ -47,6 +47,7 @@ class Trainer:
                                              shuffle=True)
       model = self.model_generator(self.train_dataset.wordict_size, self.train_dataset.weight)
       best_corrcoef[emotion] = self._train(model, train_loader, valid_loader, identity=emotion)
+      del model, train_loader, valid_loader
     best_corrcoef['avg'] = np.mean([best_corrcoef[emotion] for emotion in emotions])
     self.logger.i('\n'+str(best_corrcoef), True, True)
   def _train(self, model, train_loader, valid_loader, identity=None):
@@ -96,7 +97,7 @@ class Trainer:
         mean_loss = losses / counter
         valid_losses = 0.
         valid_counter = 0
-        valid_acc = 0.
+        # valid_acc = 0.
         # Validtion
         model.eval()
         valid_prediction = []
