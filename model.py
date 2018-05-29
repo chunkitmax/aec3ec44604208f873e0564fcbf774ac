@@ -9,17 +9,18 @@ class LSTM_Model(T.nn.Module):
     pass
 
 class CNN_Model(T.nn.Module):
-  def __init__(self, wordict_size, embedding_len, max_doc_len, use_cuda=True):
+  def __init__(self, wordict_size, embedding_len, max_doc_len, weight=None, use_cuda=True):
     super(CNN_Model, self).__init__()
     self.wordict_size = wordict_size
     self.embedding_len = embedding_len
     self.max_doc_len = max_doc_len
+    self.weight = weight
     self.use_cuda = use_cuda
     self._build_model()
 
   def _build_model(self):
     self._build_model_1()
-    self._loss_fn = T.nn.CrossEntropyLoss()
+    self._loss_fn = T.nn.CrossEntropyLoss(weight=self.weight)
     if self.use_cuda:
       self.cuda()
     self._optimizer = T.optim.Adam(self.parameters(), 1e-3)
@@ -51,7 +52,7 @@ class CNN_Model(T.nn.Module):
         tmp_output = embeddings
         for layer in module:
           tmp_output = self.activation(layer(tmp_output))
-        output.append(self.max_pool(tmp_output).squeeze())
+        output.append(self.max_pool(tmp_output).squeeze(2))
       else:
         return module(self.dropout(T.cat(output, dim=1)))
 

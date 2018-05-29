@@ -1,5 +1,6 @@
 import os
 import re
+from collections import Counter
 
 import numpy as np
 import torch as T
@@ -51,6 +52,12 @@ class SemEval_DataSet(Dataset):
   def __getitem__(self, index):
     return T.LongTensor(self.data[self.emotion][index]), \
            self.intensity[self.emotion][index]
+  @property
+  def weight(self):
+    counter = Counter(self.intensity[self.emotion])
+    freq_list = sorted(dict(counter).items(), key=lambda x: x[0])
+    max_freq = max(freq_list, key=lambda x: x[1])[1]
+    return T.FloatTensor(list(map(lambda x: max_freq/x[1], freq_list)))
   @property
   def wordict_size(self):
     return len(self.wordict[self.emotion])

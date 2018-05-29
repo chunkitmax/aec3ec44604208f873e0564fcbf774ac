@@ -36,7 +36,8 @@ class Trainer:
     self.save_best_model = save_best_model
     self.counter = 0
   def train(self):
-    emotions = self.train_dataset.EMOTIONS
+    # emotions = self.train_dataset.EMOTIONS
+    emotions = ['anger']
     best_corrcoef = {}
     for emotion in emotions:
       self.train_dataset.set_emotion(emotion)
@@ -45,7 +46,7 @@ class Trainer:
                                              shuffle=True)
       valid_loader = T.utils.data.DataLoader(self.valid_dataset, batch_size=self.batch_size,
                                              shuffle=True)
-      model = self.model_generator(self.train_dataset.wordict_size)
+      model = self.model_generator(self.train_dataset.wordict_size, self.train_dataset.weight)
       best_corrcoef[emotion] = self._train(model, train_loader, valid_loader, identity=emotion)
     best_corrcoef['avg'] = np.mean([best_corrcoef[emotion] for emotion in emotions])
     self.logger.i('\n'+str(best_corrcoef), True, True)
@@ -143,7 +144,7 @@ class Trainer:
         if corrcoef > best_corrcoef:
           best_corrcoef = corrcoef
           if self.save_best_model:
-            self._save(model, epoch_index, loss_history, mean_fscore, identity)
+            self._save(model, epoch_index, loss_history, best_corrcoef, identity)
         self.logger.d('', True, False)
     except KeyboardInterrupt:
       self.logger.i('\n\nInterrupted', True)

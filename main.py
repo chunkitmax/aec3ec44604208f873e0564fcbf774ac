@@ -38,7 +38,7 @@ if __name__ == '__main__':
     print('Wordict size: %d'%(len(train_set.wordict)))
     if Args.phase == 'train':
       # Training
-      model_generator = lambda wordict_size: CNN_Model(wordict_size, Args.emb_len, Args.max_len)
+      model_generator = lambda wordict_size, weight: CNN_Model(wordict_size, Args.emb_len, Args.max_len, weight)
       def collate_fn(entry):
         return entry[0], entry[1].long().unsqueeze(1)
       trainer = Trainer(model_generator, train_set, valid_set, max_epoch=Args.epoch,
