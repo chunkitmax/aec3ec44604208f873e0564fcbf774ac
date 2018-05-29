@@ -9,15 +9,15 @@ class LSTM_Model(T.nn.Module):
     pass
 
 class CNN_Model(T.nn.Module):
-  def __init__(self, embedding_len, max_doc_len, use_cuda=True):
+  def __init__(self, wordict_size, embedding_len, max_doc_len, use_cuda=True):
     super(CNN_Model, self).__init__()
+    self.wordict_size = wordict_size
     self.embedding_len = embedding_len
     self.max_doc_len = max_doc_len
     self.use_cuda = use_cuda
-    # self._build_model()
+    self._build_model()
 
-  def _build_model(self, wordict_size):
-    self.wordict_size = wordict_size
+  def _build_model(self):
     self._build_model_1()
     self._loss_fn = T.nn.CrossEntropyLoss()
     if self.use_cuda:
