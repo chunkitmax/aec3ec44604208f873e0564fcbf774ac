@@ -110,3 +110,4 @@ test*
 log*
 best_*
 *_log*
+!log.py
