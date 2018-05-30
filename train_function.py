@@ -2,7 +2,7 @@ import os
 import pickle
 
 from data import SemEval_DataSet
-from model import CNN_Model, T
+from model import T, CNN_Model, LSTM_Model
 from train import Trainer
 
 
@@ -17,29 +17,85 @@ def get_dataset(task):
   else:
     valid_set = SemEval_DataSet('dev', task, wordict=train_set.wordict)
     pickle.dump(valid_set, open('data/valid_%s_set'%(task), 'wb+'))
+  if os.path.exists('data/test_%s_set'%(task)):
+    test_set = pickle.load(open('data/test_%s_set'%(task), 'rb'))
+  else:
+    test_set = SemEval_DataSet('test', task, wordict=train_set.wordict)
+    pickle.dump(test_set, open('data/test_%s_set'%(task), 'wb+'))
   print('Wordict size: %s'%([len(train_set.wordict[emotion])
                              for emotion in train_set.wordict]))
-  return train_set, valid_set
+  return train_set, valid_set, test_set
 
 def CNN_OC():
-  train_set, valid_set = get_dataset('oc')
-  model_generator = lambda wordict_size, weight: \
-                    CNN_Model(wordict_size, 100, 100, 'oc', weight)
+  train_set, valid_set, test_set = get_dataset('oc')
+  def model_generator(wordict_size, weight):
+    model = CNN_Model(wordict_size, 100, 100, 'oc', weight)
+    model.build_model()
+    return model
   def collate_fn(entry):
     return entry[0], entry[1].long().unsqueeze(1)
-  trainer = Trainer(model_generator, train_set, valid_set, max_epoch=750,
+  trainer = Trainer(model_generator, train_set, valid_set, test_set, max_epoch=750,
                     use_cuda=True, collate_fn=collate_fn)
-  trainer.train()
+  print(trainer.train())
 
 def CNN_REG():
-  train_set, valid_set = get_dataset('reg')
-  model_generator = lambda wordict_size, weight: \
-                    CNN_Model(wordict_size, 100, 100, 'reg', 5e-5, weight)
+  train_set, valid_set, test_set = get_dataset('reg')
+  def model_generator(wordict_size, weight):
+    model = CNN_Model(wordict_size, 100, 100, 'reg', weight)
+    model.build_model(lr=5e-5)
+    return model
   def collate_fn(entry):
     return entry[0], entry[1].float().unsqueeze(1)
-  trainer = Trainer(model_generator, train_set, valid_set, max_epoch=750,
-                    use_cuda=True, collate_fn=collate_fn)
-  trainer.train()
+  trainer = Trainer(model_generator, train_set, valid_set, test_set, max_epoch=750,
+                    use_cuda=True, collate_fn=collate_fn, verbose=1)
+  print(trainer.train())
+
+def LSTM_OC():
+  train_set, valid_set, test_set = get_dataset('oc')
+  hyparameter_sets = [
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 16,
+          'num_hidden_layer': 1
+      },
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 32,
+          'num_hidden_layer': 1
+      },
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 16,
+          'num_hidden_layer': 2
+      },
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 32,
+          'num_hidden_layer': 2
+      },
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 16,
+          'num_hidden_layer': 3
+      },
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 32,
+          'num_hidden_layer': 3
+      }
+  ]
+  results = []
+  for hyparameter_set in hyparameter_sets:
+    def model_generator(wordict_size, weight):
+      model = LSTM_Model(wordict_size, 100, 60, 'oc', weight)
+      model.build_model(**hyparameter_set)
+      return model
+    def collate_fn(entry):
+      return entry[0][:, :60], entry[1].long().unsqueeze(1)
+    trainer = Trainer(model_generator, train_set, valid_set, test_set, max_epoch=750,
+                      use_cuda=True, collate_fn=collate_fn)
+    results.append(trainer.train())
+  print(results)
 
 if __name__ == '__main__':
   CNN_REG()

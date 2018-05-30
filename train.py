@@ -18,7 +18,7 @@ from log import Logger
 
 
 class Trainer:
-  def __init__(self, model_generator=None, train_dataset=None, valid_dataset=None,
+  def __init__(self, model_generator, train_dataset, valid_dataset, test_dataset,
                batch_size=50, max_epoch=1000, use_cuda=True, use_tensorboard=False,
                early_stopping_history_len=50, early_stopping_patience=5,
                collate_fn=None, verbose=1, save_best_model=False):
@@ -26,6 +26,7 @@ class Trainer:
     self.model_generator = model_generator
     self.train_dataset = train_dataset
     self.valid_dataset = valid_dataset
+    self.test_dataset = test_dataset
     self.batch_size = batch_size
     self.max_epoch = max_epoch
     self.use_cuda = use_cuda
@@ -37,20 +38,29 @@ class Trainer:
     self.counter = 0
   def train(self):
     emotions = self.train_dataset.EMOTIONS
-    best_corrcoef = {}
+    best_valid_corrcoef = {}
+    best_test_corrcoef = {}
     for emotion in emotions:
       self.train_dataset.set_emotion(emotion)
       self.valid_dataset.set_emotion(emotion)
+      self.test_dataset.set_emotion(emotion)
       train_loader = T.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size,
                                              shuffle=True)
       valid_loader = T.utils.data.DataLoader(self.valid_dataset, batch_size=self.batch_size,
                                              shuffle=True)
+      test_loader = T.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size,
+                                            shuffle=True)
       model = self.model_generator(self.train_dataset.wordict_size, self.train_dataset.weight)
-      best_corrcoef[emotion] = self._train(model, train_loader, valid_loader, identity=emotion)
+      best_valid_corrcoef[emotion], \
+      best_test_corrcoef[emotion] = self._train(model, train_loader, valid_loader, test_loader,
+                                                identity=emotion)
       del model, train_loader, valid_loader
-    best_corrcoef['avg'] = np.mean([best_corrcoef[emotion] for emotion in emotions])
-    self.logger.i('\n'+str(best_corrcoef), True, True)
-  def _train(self, model, train_loader, valid_loader, identity=None):
+    best_valid_corrcoef['avg'] = np.mean([best_valid_corrcoef[emotion] for emotion in emotions])
+    best_test_corrcoef['avg'] = np.mean([best_test_corrcoef[emotion] for emotion in emotions])
+    # self.logger.i('\n'+str(best_valid_corrcoef), True, True)
+    # self.logger.i('\n'+str(best_test_corrcoef), True, True)
+    return best_valid_corrcoef, best_test_corrcoef
+  def _train(self, model, train_loader, valid_loader, test_loader, identity=None):
     if identity is None:
       identity = 'Net'+str(self.counter)
       self.counter += 1
@@ -62,6 +72,7 @@ class Trainer:
       total_batch_per_epoch = len(train_loader)
       loss_history = deque(maxlen=self.early_stopping_history_len)
       best_corrcoef = -1.
+      last_test_corrcoef = -1.
       # early_stopping_violate_counter = 0
       epoch_index = 0
       for epoch_index in range(self.max_epoch):
@@ -143,6 +154,9 @@ class Trainer:
         # Save best model
         if corrcoef > best_corrcoef:
           best_corrcoef = corrcoef
+          last_test_corrcoef = self._test(model, test_loader)
+          self.logger.d(' -- test_corrcoef: %.4f'%(last_test_corrcoef),
+                        reset_cursor=False)
           if self.save_best_model:
             self._save(model, epoch_index, loss_history, best_corrcoef, identity)
         self.logger.d('', True, False)
@@ -151,16 +165,25 @@ class Trainer:
     if self.use_tensorboard:
       self.writer.close()
     self.logger.i('Finish', True)
-    return best_corrcoef
-  # def _test(self, model, test_loader):
-  #   model.eval()
-  #   for entry in test_loader:
-  #     data = entry[0]
-  #     data = T.autograd.Variable(data)
-  #     if self.use_cuda:
-  #       data = data.cuda()
-  #     _, predicted = model(data)
-  #     counter += 1
+    return best_corrcoef, last_test_corrcoef
+  def _test(self, model, test_loader):
+    model.eval()
+    test_prediction = []
+    test_labels = []
+    for entry in test_loader:
+      if self.collate_fn is not None:
+        data, label = self.collate_fn(entry)
+      else:
+        data, label = entry
+      test_labels += list(label.view(-1))
+      data = T.autograd.Variable(data)
+      label = T.autograd.Variable(label)
+      if self.use_cuda:
+        data = data.cuda()
+        label = label.cuda()
+      _, predicted = model(data)
+      test_prediction += list(predicted.view(-1).data.tolist())
+    return np.corrcoef(test_prediction, test_labels)[0, 1]
   def _save(self, model, global_step, loss_history, best_corrcoef, identity):
     T.save({
         'epoch': global_step+1,
@@ -170,6 +193,6 @@ class Trainer:
         'optimizer': model.optimizer.state_dict()
     }, identity+'_best')
 
-if __name__ == '__main__':
-  trainer = Trainer(use_cuda=True, use_tensorboard=True)
-  trainer.train()
+# if __name__ == '__main__':
+#   trainer = Trainer(use_cuda=True, use_tensorboard=True)
+#   trainer.train()

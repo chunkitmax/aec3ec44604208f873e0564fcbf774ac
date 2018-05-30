@@ -1,55 +1,88 @@
 import torch as T
 
 
-class LSTM_Model(T.nn.Module):
-  def __init__(self, wordict_size, embedding_len, max_doc_len, weight=None,
-               hidden_layer_size=32, num_hidden_layer=3, use_cuda=True):
-    super(LSTM_Model, self).__init__()
+class ResNet_GRU_Model(T.nn.Module):
+  def __init__(self, wordict_size, embedding_len, max_doc_len, task,
+               weight=None, use_cuda=True):
+    super(ResNet_GRU_Model, self).__init__()
     self.wordict_size = wordict_size
     self.embedding_len = embedding_len
     self.max_doc_len = max_doc_len
+    self.task = task
     self.weight = weight
-    self.hidden_layer_size = hidden_layer_size
-    self.num_hidden_layer = num_hidden_layer
     self.use_cuda = use_cuda
-    self._build_model()
+    # self.build_model()
 
-  def _build_model(self):
-    self._build_model_1()
-    self._loss_fn = T.nn.CrossEntropyLoss(weight=self.weight)
+  def build_model(self, lr=1e-3, **args):
+    self._build_model_1(**args)
+    self._loss_fn = T.nn.CrossEntropyLoss(weight=self.weight) if self.task == 'oc' \
+                    else T.nn.MSELoss()
     if self.use_cuda:
       self.cuda()
-    self._optimizer = T.optim.Adam(self.parameters(), 1e-3)
+    self._optimizer = T.optim.Adam(self.parameters(), lr)
+
+  def _build_model_1(self, hidden_layer_size=32, num_hidden_layer=3, dropout=0.,
+                     bidirectional=False):
+    self.embed = T.nn.Embedding(self.wordict_size, self.embedding_len, padding_idx=0,
+                                scale_grad_by_freq=True)
+    self.sequential = T.nn.ModuleList()
+    self.sequential.append(T.nn.LSTM(self.embedding_len, hidden_layer_size,
+                                     num_hidden_layer, batch_first=True,
+                                     dropout=dropout, bidirectional=bidirectional))
+    self.sequential.append(T.nn.Linear(hidden_layer_size*self.max_doc_len*(2 if bidirectional else 1),
+                                       4 if self.task == 'oc' else 1))
+
+  def forward(self, inputs):
+    embeddings = self.embed(inputs)
+    output = self._forward_1(embeddings)
+    if self.task == 'oc':
+      return output, T.max(output, dim=1)[1]
+    return output, output
+
+  def _forward_1(self, embeddings):
+    tmp_output = None
+    for module in self.sequential:
+      if isinstance(module, T.nn.LSTM):
+        tmp_output = module(embeddings)
+      elif isinstance(module, T.nn.Linear):
+        return module(tmp_output[0].contiguous().view(embeddings.shape[0], -1))
+
+  @property
+  def optimizer(self):
+    return self._optimizer
+
+  @property
+  def loss_fn(self):
+    return self._loss_fn
 
 class CNN_Model(T.nn.Module):
   def __init__(self, wordict_size, embedding_len, max_doc_len, task,
-               lr=1e-3, weight=None, use_cuda=True):
+               weight=None, use_cuda=True):
     super(CNN_Model, self).__init__()
     self.wordict_size = wordict_size
     self.embedding_len = embedding_len
     self.max_doc_len = max_doc_len
     self.task = task
-    self.lr = lr
     self.weight = weight
     self.use_cuda = use_cuda
-    self._build_model()
+    # self.build_model()
 
-  def _build_model(self):
-    self._build_model_1()
+  def build_model(self, lr=1e-3, **args):
+    self._build_model_1(**args)
+    self.embedding_dropout = T.nn.Dropout(0.1)
     self._loss_fn = T.nn.CrossEntropyLoss(weight=self.weight) if self.task == 'oc' \
                     else T.nn.MSELoss()
     if self.use_cuda:
       self.cuda()
-    self._optimizer = T.optim.Adam(self.parameters(), self.lr)
+    self._optimizer = T.optim.Adam(self.parameters(), lr)
 
   def forward(self, inputs):
     embeddings = self.embed(inputs)
-    embeddings = T.transpose(embeddings, 1, 2)
+    embeddings = self.embedding_dropout(T.transpose(embeddings, 1, 2))
     output = self._forward_1(embeddings)
     if self.task == 'oc':
       return output, T.max(output, dim=1)[1]
-    else:
-      return output, output
+    return output, output
 
   def _build_model_1(self, kernel_size=(2, 3, 4), num_conv=2, num_kernel=100):
     self.embed = T.nn.Embedding(self.wordict_size, self.embedding_len, padding_idx=0,
@@ -58,12 +91,11 @@ class CNN_Model(T.nn.Module):
     for n in kernel_size:
       self.conv = T.nn.ModuleList()
       self.conv.append(T.nn.Conv1d(self.embedding_len, num_kernel, n, padding=n-1))
-      self.conv.append(T.nn.BatchNorm1d(self.embedding_len))
       for _ in range(num_conv-1):
         self.conv.append(T.nn.Conv1d(num_kernel, num_kernel, n, padding=n-1))
-        self.conv.append(T.nn.BatchNorm1d(num_kernel))
       self.sequential.append(self.conv)
-    self.sequential.append(T.nn.Linear(len(kernel_size)*num_kernel, 4 if self.task == 'oc' else 1))
+    self.sequential.append(T.nn.Linear(len(kernel_size)*num_kernel, 128))
+    self.sequential.append(T.nn.Linear(128, 4 if self.task == 'oc' else 1))
     self.dropout = T.nn.Dropout()
     self.activation = lambda x: T.nn.functional.leaky_relu(x, 0.1)
     self.max_pool = lambda x: T.nn.functional.max_pool1d(x, x.shape[2])
@@ -78,8 +110,12 @@ class CNN_Model(T.nn.Module):
           else:
             tmp_output = layer(tmp_output)
         output.append(self.max_pool(tmp_output).squeeze(2))
+      elif output is not None:
+        tmp_output = self.activation(module(self.dropout(T.cat(output, dim=1))))
+        output = None
       else:
-        return module(self.dropout(T.cat(output, dim=1)))
+        tmp_output = module(tmp_output)
+    return tmp_output
 
   @property
   def optimizer(self):
