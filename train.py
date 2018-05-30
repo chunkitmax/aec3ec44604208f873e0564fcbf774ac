@@ -154,9 +154,9 @@ class Trainer:
         # Save best model
         if corrcoef > best_corrcoef:
           best_corrcoef = corrcoef
-          last_test_corrcoef = self._test(model, test_loader)
-          self.logger.d(' -- test_corrcoef: %.4f'%(last_test_corrcoef),
-                        reset_cursor=False)
+          # last_test_corrcoef = self._test(model, test_loader)
+          # self.logger.d(' -- test_corrcoef: %.4f'%(last_test_corrcoef),
+          #               reset_cursor=False)
           if self.save_best_model:
             self._save(model, epoch_index, loss_history, best_corrcoef, identity)
         self.logger.d('', True, False)

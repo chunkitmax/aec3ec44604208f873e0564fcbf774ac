@@ -2,7 +2,7 @@ import os
 import pickle
 
 from data import SemEval_DataSet
-from model import T, CNN_Model, LSTM_Model
+from model import T, CNN_Model, ResNet_GRU_Model, NN_Model
 from train import Trainer
 
 
@@ -50,44 +50,22 @@ def CNN_REG():
                     use_cuda=True, collate_fn=collate_fn, verbose=1)
   print(trainer.train())
 
-def LSTM_OC():
+def ResNetCNN_OC():
   train_set, valid_set, test_set = get_dataset('oc')
   hyparameter_sets = [
       {
-          'lr': 1e-3,
+          'lr': 5e-4,
+          'num_kernel': 64,
+          'kernel_size': 3,
           'hidden_layer_size': 16,
-          'num_hidden_layer': 1
-      },
-      {
-          'lr': 1e-3,
-          'hidden_layer_size': 32,
-          'num_hidden_layer': 1
-      },
-      {
-          'lr': 1e-3,
-          'hidden_layer_size': 16,
-          'num_hidden_layer': 2
-      },
-      {
-          'lr': 1e-3,
-          'hidden_layer_size': 32,
-          'num_hidden_layer': 2
-      },
-      {
-          'lr': 1e-3,
-          'hidden_layer_size': 16,
-          'num_hidden_layer': 3
-      },
-      {
-          'lr': 1e-3,
-          'hidden_layer_size': 32,
-          'num_hidden_layer': 3
+          'num_hidden_layer': 1,
+          'dropout': 0.
       }
   ]
   results = []
   for hyparameter_set in hyparameter_sets:
     def model_generator(wordict_size, weight):
-      model = LSTM_Model(wordict_size, 100, 60, 'oc', weight)
+      model = ResNet_GRU_Model(wordict_size, 100, 60, 'oc', weight)
       model.build_model(**hyparameter_set)
       return model
     def collate_fn(entry):
@@ -97,5 +75,75 @@ def LSTM_OC():
     results.append(trainer.train())
   print(results)
 
+def ResNetCNN_REG():
+  train_set, valid_set, test_set = get_dataset('reg')
+  hyparameter_sets = [
+      {
+          'lr': 5e-5,
+          'num_kernel': 64,
+          'kernel_size': 3,
+          'hidden_layer_size': 16,
+          'num_hidden_layer': 1,
+          'dropout': 0.
+      }
+  ]
+  results = []
+  for hyparameter_set in hyparameter_sets:
+    def model_generator(wordict_size, weight):
+      model = ResNet_GRU_Model(wordict_size, 100, 60, 'reg', weight)
+      model.build_model(**hyparameter_set)
+      return model
+    def collate_fn(entry):
+      return entry[0][:, :60], entry[1].float().unsqueeze(1)
+    trainer = Trainer(model_generator, train_set, valid_set, test_set, max_epoch=750,
+                      use_cuda=True, collate_fn=collate_fn)
+    results.append(trainer.train())
+  print(results)
+
+def NN_OC():
+  train_set, valid_set, test_set = get_dataset('oc')
+  hyparameter_sets = [
+      {
+          'lr': 1e-3,
+          'hidden_layer_size': 125,
+          'num_hidden_layer': 2
+      }
+  ]
+  results = []
+  for hyparameter_set in hyparameter_sets:
+    def model_generator(wordict_size, weight):
+      model = NN_Model(wordict_size, 100, 100, 'oc', weight)
+      model.build_model(**hyparameter_set)
+      return model
+    def collate_fn(entry):
+      return entry[0], entry[1].long().unsqueeze(1)
+    trainer = Trainer(model_generator, train_set, valid_set, test_set, max_epoch=750,
+                      use_cuda=True, collate_fn=collate_fn)
+    results.append(trainer.train())
+  print(results)
+
+def NN_REG():
+  train_set, valid_set, test_set = get_dataset('reg')
+  hyparameter_sets = [
+      {
+          'lr': 5e-5,
+          'hidden_layer_size': 80,
+          'num_hidden_layer': 12,
+          'dropout': .2
+      }
+  ]
+  results = []
+  for hyparameter_set in hyparameter_sets:
+    def model_generator(wordict_size, weight):
+      model = NN_Model(wordict_size, 100, 100, 'reg', weight)
+      model.build_model(**hyparameter_set)
+      return model
+    def collate_fn(entry):
+      return entry[0], entry[1].float().unsqueeze(1)
+    trainer = Trainer(model_generator, train_set, valid_set, test_set, max_epoch=750,
+                      use_cuda=True, collate_fn=collate_fn)
+    results.append(trainer.train())
+  print(results)
+
 if __name__ == '__main__':
-  CNN_REG()
+  NN_REG()
