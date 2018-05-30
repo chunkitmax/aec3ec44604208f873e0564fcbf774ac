@@ -22,7 +22,7 @@ def tokenize(s):
       tmp_tokens.append('<upper>')
     tmp_tokens.append(token)
   tokens = [stemmer.stem(spell(token))
-            if word_checker.search(token) is not None
+            if word_checker.search(token) is not None and token != '<upper>'
             else token
             for token in tmp_tokens]
   return tokens
